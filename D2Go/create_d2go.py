@@ -8,6 +8,8 @@ from PIL import Image
 
 import torch
 from torch.utils.mobile_optimizer import optimize_for_mobile
+from torch.utils import bundled_inputs
+from torch.utils.bundled_inputs import augment_model_with_bundled_inputs
 
 from d2go.export.api import convert_and_export_predictor
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
@@ -64,13 +66,18 @@ def test_export_torchvision_format():
     )
 
     orig_model = torch.jit.load(os.path.join(predictor_path, "model.jit"))
-    wrapped_model = Wrapper(orig_model)
-    # optionally do a forward
-    wrapped_model([torch.rand(3, 600, 600)])
-    scripted_model = torch.jit.script(wrapped_model)
+    scripted_model = torch.jit.script(orig_model)
     optimized_model = optimize_for_mobile(scripted_model)
-    optimized_model.save("D2Go/d2go_optimized.pt")
-    optimized_model._save_for_lite_interpreter("D2Go/d2go_optimized.ptl")
+
+    inflatable_arg_predict_net = bundled_inputs.bundle_randn(3,600,600)
+    inputs_predict_net = [
+        (inflatable_arg_predict_net,),
+        (inflatable_arg_predict_net,),
+    ]
+
+    augment_model_with_bundled_inputs(optimized_model, inputs_predict_net)
+    optimized_model._save_for_lite_interpreter("../PerfBenchMarkModels/object_detection_1.ptl")
+
 
 if __name__ == '__main__':
     test_export_torchvision_format()

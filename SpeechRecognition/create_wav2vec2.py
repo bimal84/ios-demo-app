@@ -4,6 +4,8 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 import torchaudio
 from torchaudio.models.wav2vec2.utils.import_huggingface import import_huggingface_model
 from transformers import Wav2Vec2ForCTC
+from torch.utils.bundled_inputs import augment_model_with_bundled_inputs
+from torch.utils import bundled_inputs
 
 # Wav2vec2 model emits sequences of probability (logits) distributions over the characters
 # The following class adds steps to decode the transcript (best path)
@@ -62,4 +64,12 @@ waveform , _ = torchaudio.load('scent_of_a_woman_future.wav')
 print(waveform.size())
 print('Result:', optimized_model(waveform))
 
-optimized_model._save_for_lite_interpreter("SpeechRecognition/wav2vec2.ptl")
+
+inflatable_arg_predict_net = bundled_inputs.bundle_randn(1, 65024)
+inputs_predict_net = [
+    (inflatable_arg_predict_net,),
+    (inflatable_arg_predict_net,),
+]
+
+augment_model_with_bundled_inputs(optimized_model, inputs_predict_net)
+optimized_model._save_for_lite_interpreter("../PerfBenchMarkModels/speech_recognition_1.ptl")

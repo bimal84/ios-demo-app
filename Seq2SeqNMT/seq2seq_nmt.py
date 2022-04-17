@@ -12,6 +12,9 @@ import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
 
+from torch.utils import bundled_inputs
+from torch.utils.bundled_inputs import augment_model_with_bundled_inputs
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 SOS_token = 0
@@ -323,3 +326,16 @@ traced_encoder_optimized._save_for_lite_interpreter("optimized_encoder_150k.ptl"
 
 traced_decoder_optimized = optimize_for_mobile(traced_decoder)
 traced_decoder_optimized._save_for_lite_interpreter("optimized_decoder_150k.ptl")
+
+inflatable_arg_predict_net = bundled_inputs.bundle_randn(1, 4, 192, 192)
+inputs_predict_net = [
+    (inflatable_arg_predict_net,),
+    (inflatable_arg_predict_net,),
+]
+
+augment_model_with_bundled_inputs(traced_encoder_optimized , [(encoder_input, encoder_hidden)])
+traced_encoder_optimized._save_for_lite_interpreter("../PerfBenchMarkModels/seq2seq_nmt_encoder_150k_1.ptl")
+
+augment_model_with_bundled_inputs(traced_decoder_optimized , [(decoder_input1, decoder_input2, decoder_input3)])
+traced_decoder_optimized._save_for_lite_interpreter("../PerfBenchMarkModels/seq2seq_nmt_decoder_150k_1.ptl")
+
